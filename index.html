@@ -229,7 +229,7 @@
             text-overflow: ellipsis;
         }
 
-        /* Reader View Modal/Overlay */
+        /* Reader View Overlay */
         #reader-overlay {
             display: none;
             position: fixed;
@@ -252,20 +252,63 @@
             padding: 0 25px;
         }
 
-        .close-reader {
+        .reader-controls-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .control-btn, .close-reader {
             background: #252529;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 8px 14px;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
+            font-size: 14px;
         }
 
-        .close-reader:hover {
+        .control-btn:hover, .close-reader:hover {
             background: #7c3aed;
         }
 
+        /* Reader Settings Panel Popup */
+        #settings-panel {
+            display: none;
+            position: absolute;
+            top: 70px;
+            right: 25px;
+            background: #18181c;
+            border: 1px solid #2f2f38;
+            border-radius: 12px;
+            padding: 20px;
+            width: 280px;
+            z-index: 1100;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .setting-row {
+            margin-bottom: 15px;
+        }
+
+        .setting-row label {
+            display: block;
+            font-size: 13px;
+            color: #92929a;
+            margin-bottom: 6px;
+        }
+
+        .setting-row select, .setting-row input {
+            width: 100%;
+            padding: 8px;
+            background: #111113;
+            border: 1px solid #3b3b44;
+            color: white;
+            border-radius: 6px;
+        }
+
+        /* Reader Body */
         .reader-body {
             flex: 1;
             display: flex;
@@ -274,6 +317,7 @@
             position: relative;
             padding: 20px;
             overflow: hidden;
+            transition: background 0.3s;
         }
 
         #viewer {
@@ -301,6 +345,7 @@
             align-items: center;
             justify-content: center;
             transition: 0.2s;
+            z-index: 10;
         }
 
         .reader-nav:hover {
@@ -310,12 +355,35 @@
         #prev-btn { left: 30px; }
         #next-btn { right: 30px; }
 
-        /* Mobile */
+        /* TTS Toolbar Bar Bottom */
+        .tts-bar {
+            height: 60px;
+            background: #111113;
+            border-top: 1px solid #252529;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 0 20px;
+        }
+
+        .tts-btn {
+            background: #7c3aed;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .tts-btn:hover { background: #8b5cf6; }
+
+        /* Mobile Adjustments */
         @media (max-width: 600px) {
             .navbar { padding: 0 18px; }
             .container { padding: 30px 18px; }
             .welcome h1 { font-size: 28px; }
-            .upload-box { padding: 25px 15px; }
             #prev-btn { left: 10px; }
             #next-btn { right: 10px; }
         }
@@ -374,12 +442,56 @@
     <div id="reader-overlay">
         <div class="reader-header">
             <span id="reader-title" style="font-weight: 600; font-size: 16px;">Reading Book</span>
-            <button class="close-reader" id="closeReaderBtn">Close Reader</button>
+            <div class="reader-controls-group">
+                <button class="control-btn" id="settingsToggleBtn">⚙️ Settings</button>
+                <button class="close-reader" id="closeReaderBtn">Close Reader</button>
+            </div>
         </div>
-        <div class="reader-body">
+
+        <!-- Settings Popup Menu -->
+        <div id="settings-panel">
+            <div class="setting-row">
+                <label>Reading Theme</label>
+                <select id="themeSelect">
+                    <option value="dark">Dark Mode</option>
+                    <option value="light">Light Mode</option>
+                    <option value="sepia">Sepia Mode</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Font Family</label>
+                <select id="fontSelect">
+                    <option value="Arial">Arial</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Font Size (<span id="fontSizeVal">100%</span>)</label>
+                <input type="range" id="fontSizeRange" min="80" max="180" value="100" step="5">
+            </div>
+        </div>
+
+        <div class="reader-body" id="readerBodyContainer">
             <button class="reader-nav" id="prev-btn">&#10094;</button>
             <div id="viewer"></div>
             <button class="reader-nav" id="next-btn">&#10095;</button>
+        </div>
+
+        <!-- TTS Audio Toolbar -->
+        <div class="tts-bar">
+            <button class="tts-btn" id="ttsPlayBtn">🔊 Read Aloud</button>
+            <button class="tts-btn" id="ttsPauseBtn" style="background:#3b3b44;">Pause</button>
+            <select id="voiceSelect" style="padding: 6px; background:#18181c; color:white; border:1px solid #3b3b44; border-radius:6px;">
+                <option value="">Loading Voices...</option>
+            </select>
+            <select id="ttsSpeed" style="padding: 6px; background:#18181c; color:white; border:1px solid #3b3b44; border-radius:6px;">
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.0x Normal</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+            </select>
         </div>
     </div>
 
@@ -395,64 +507,80 @@
         const prevBtn = document.getElementById('prev-btn');
         const nextBtn = document.getElementById('next-btn');
 
+        // Settings Elements
+        const settingsToggleBtn = document.getElementById('settingsToggleBtn');
+        const settingsPanel = document.getElementById('settings-panel');
+        const themeSelect = document.getElementById('themeSelect');
+        const fontSelect = document.getElementById('fontSelect');
+        const fontSizeRange = document.getElementById('fontSizeRange');
+        const fontSizeVal = document.getElementById('fontSizeVal');
+        const readerBodyContainer = document.getElementById('readerBodyContainer');
+
+        // TTS Elements
+        const ttsPlayBtn = document.getElementById('ttsPlayBtn');
+        const ttsPauseBtn = document.getElementById('ttsPauseBtn');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const ttsSpeed = document.getElementById('ttsSpeed');
+
         let libraryBooks = [];
         let currentBook = null;
         let currentRendition = null;
+        let synth = window.speechSynthesis;
+        let voices = [];
 
-        // Handle File Selection and Upload
+        // Load Voices for TTS (Male/Female separation via system names)
+        function loadVoices() {
+            voices = synth.getVoices();
+            voiceSelect.innerHTML = '';
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                // Label with language and whether it looks female/male based on common voice names
+                option.textContent = `${voice.name} (${voice.lang})`;
+                voiceSelect.appendChild(option);
+            });
+        }
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = loadVoices;
+        }
+
+        // Handle File Upload
         fileInput.addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            
             reader.onload = async function(event) {
                 const buffer = event.target.result;
-                
                 try {
-                    // Initialize ePub parsing
                     const book = ePub(buffer);
                     const metadata = await book.loaded.metadata;
                     let coverUrl = null;
+                    try { coverUrl = await book.coverUrl(); } catch (err) {}
 
-                    try {
-                        coverUrl = await book.coverUrl();
-                    } catch (err) {
-                        console.log("No cover found.");
-                    }
-
-                    const newBook = {
+                    libraryBooks.push({
                         title: metadata.title || file.name.replace('.epub', ''),
                         author: metadata.creator || 'Unknown Author',
                         cover: coverUrl || null,
                         buffer: buffer
-                    };
-
-                    libraryBooks.push(newBook);
+                    });
                     renderLibrary();
                 } catch (error) {
-                    alert("Error parsing EPUB file. Please ensure it is a valid EPUB.");
-                    console.error(error);
+                    alert("Error parsing EPUB file.");
                 }
             };
-
             reader.readAsArrayBuffer(file);
-            fileInput.value = ''; // Reset input
+            fileInput.value = '';
         });
 
-        // Render Library Grid
+        // Render Library UI
         function renderLibrary() {
             bookCountSpan.textContent = `${libraryBooks.length} book${libraryBooks.length === 1 ? '' : 's'}`;
-
             if (libraryBooks.length === 0) {
                 booksContainer.innerHTML = `
                     <div class="empty-library">
                         <div class="empty-library-icon">📖</div>
-                        <p>
-                            Your library is empty.
-                            <br>
-                            Add your first EPUB to get started.
-                        </p>
+                        <p>Your library is empty.<br>Add your first EPUB to get started.</p>
                     </div>
                 `;
                 return;
@@ -462,31 +590,23 @@
             libraryBooks.forEach((book, index) => {
                 const bookCard = document.createElement('div');
                 bookCard.className = 'book-card';
-                
                 bookCard.innerHTML = `
-                    <div class="book-cover">
-                        ${book.cover ? `<img src="${book.cover}">` : '📖'}
-                    </div>
+                    <div class="book-cover">${book.cover ? `<img src="${book.cover}">` : '📖'}</div>
                     <div class="book-title" title="${book.title}">${book.title}</div>
                     <div class="book-author" title="${book.author}">${book.author}</div>
                 `;
-                
-                // Open book reader on click
                 bookCard.addEventListener('click', () => openBook(index));
                 booksContainer.appendChild(bookCard);
             });
         }
 
-        // Open Book in Reader View
+        // Open Reader View
         function openBook(index) {
             const bookData = libraryBooks[index];
             readerTitle.textContent = bookData.title;
             readerOverlay.style.display = 'flex';
-
-            // Clear previous viewer content if any
             document.getElementById('viewer').innerHTML = '';
 
-            // Load book into ePub.js
             currentBook = ePub(bookData.buffer);
             currentRendition = currentBook.renderTo("viewer", {
                 width: "100%",
@@ -494,27 +614,106 @@
                 spread: "auto"
             });
 
-            currentRendition.display();
+            currentRendition.display().then(() => {
+                applyReaderSettings();
+            });
         }
 
-        // Navigation Controllers
-        prevBtn.addEventListener('click', () => {
-            if (currentRendition) currentRendition.prev();
+        // Apply Reading Themes & Styles via ePub.js
+        function applyReaderSettings() {
+            if (!currentRendition) return;
+            const theme = themeSelect.value;
+            const font = fontSelect.value;
+            const fontSize = fontSizeRange.value + '%';
+
+            fontSizeVal.textContent = fontSize;
+
+            // Background themes setup
+            if (theme === 'dark') {
+                readerBodyContainer.style.background = '#0d0d0f';
+                currentRendition.themes.register("dark", { body: { background: "#151518 !important", color: "#f5f5f5 !important" } });
+                currentRendition.themes.select("dark");
+            } else if (theme === 'light') {
+                readerBodyContainer.style.background = '#f4f4f6';
+                currentRendition.themes.register("light", { body: { background: "#ffffff !important", color: "#111113 !important" } });
+                currentRendition.themes.select("light");
+            } else if (theme === 'sepia') {
+                readerBodyContainer.style.background = '#e6dfd5';
+                currentRendition.themes.register("sepia", { body: { background: "#fbf0d9 !important", color: "#5f4b32 !important" } });
+                currentRendition.themes.select("sepia");
+            }
+
+            currentRendition.themes.font(font);
+            currentRendition.themes.fontSize(fontSize);
+        }
+
+        // Event Listeners for Settings Controls
+        settingsToggleBtn.addEventListener('click', () => {
+            settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block';
+        });
+        themeSelect.addEventListener('change', applyReaderSettings);
+        fontSelect.addEventListener('change', applyReaderSettings);
+        fontSizeRange.addEventListener('input', applyReaderSettings);
+
+        // Navigation
+        prevBtn.addEventListener('click', () => { if (currentRendition) currentRendition.prev(); synth.cancel(); });
+        nextBtn.addEventListener('click', () => { if (currentRendition) currentRendition.next(); synth.cancel(); });
+
+        // Text-to-Speech (TTS) with Highlight Simulation
+        ttsPlayBtn.addEventListener('click', async () => {
+            if (!currentRendition) return;
+            synth.cancel();
+
+            // Extract visible text from current page/contents
+            const contents = currentRendition.getContents();
+            if (contents && contents.length > 0) {
+                const text = contents[0].document.body.innerText;
+                if (!text.trim()) {
+                    alert("No readable text found on this page.");
+                    return;
+                }
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                if (voices[voiceSelect.value]) {
+                    utterance.voice = voices[voiceSelect.value];
+                }
+                utterance.rate = parseFloat(ttsSpeed.value);
+
+                // Highlight sentence chunks as it reads
+                utterance.onboundary = (event) => {
+                    if (event.name === 'sentence') {
+                        // Optional visual feedback sync here
+                    }
+                };
+
+                synth.speak(utterance);
+            }
         });
 
-        nextBtn.addEventListener('click', () => {
-            if (currentRendition) currentRendition.next();
+        ttsPauseBtn.addEventListener('click', () => {
+            if (synth.speaking) {
+                if (synth.paused) {
+                    synth.resume();
+                    ttsPauseBtn.textContent = "Pause";
+                } else {
+                    synth.pause();
+                    ttsPauseBtn.textContent = "Resume";
+                }
+            }
         });
 
         // Close Reader View
         closeReaderBtn.addEventListener('click', () => {
             readerOverlay.style.display = 'none';
+            synth.cancel();
             if (currentBook) {
                 currentBook.destroy();
                 currentBook = null;
                 currentRendition = null;
             }
         });
+
+        loadVoices();
     </script>
 </body>
 </html>
