@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Lumina Reads</title>
+
+    <!-- Required Libraries for EPUB parsing and rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
     <style>
         * {
@@ -21,7 +24,6 @@
         }
 
         /* Top navigation */
-
         .navbar {
             height: 70px;
             display: flex;
@@ -72,7 +74,6 @@
         }
 
         /* Main content */
-
         .container {
             max-width: 1200px;
             margin: auto;
@@ -94,7 +95,6 @@
         }
 
         /* Upload area */
-
         .upload-box {
             border: 1px dashed #3b3b44;
             background: #151518;
@@ -145,7 +145,6 @@
         }
 
         /* Library */
-
         .library-header {
             display: flex;
             justify-content: space-between;
@@ -182,104 +181,340 @@
             margin-bottom: 15px;
         }
 
+        .book-card {
+            background: #151518;
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid #252529;
+        }
+
+        .book-card:hover {
+            transform: translateY(-4px);
+            border-color: #7c3aed;
+        }
+
+        .book-cover {
+            height: 180px;
+            background: #252529;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-size: 30px;
+        }
+
+        .book-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .book-title {
+            font-size: 15px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .book-author {
+            font-size: 13px;
+            color: #777780;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Reader View Modal/Overlay */
+        #reader-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0d0d0f;
+            z-index: 1000;
+            flex-direction: column;
+        }
+
+        .reader-header {
+            height: 60px;
+            background: #111113;
+            border-bottom: 1px solid #252529;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+        }
+
+        .close-reader {
+            background: #252529;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .close-reader:hover {
+            background: #7c3aed;
+        }
+
+        .reader-body {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        #viewer {
+            width: 100%;
+            max-width: 800px;
+            height: 100%;
+            background: #151518;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .reader-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(25, 25, 30, 0.8);
+            color: white;
+            border: 1px solid #3b3b44;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+
+        .reader-nav:hover {
+            background: #7c3aed;
+        }
+
+        #prev-btn { left: 30px; }
+        #next-btn { right: 30px; }
+
         /* Mobile */
-
         @media (max-width: 600px) {
-            .navbar {
-                padding: 0 18px;
-            }
-
-            .container {
-                padding: 30px 18px;
-            }
-
-            .welcome h1 {
-                font-size: 28px;
-            }
-
-            .upload-box {
-                padding: 25px 15px;
-            }
+            .navbar { padding: 0 18px; }
+            .container { padding: 30px 18px; }
+            .welcome h1 { font-size: 28px; }
+            .upload-box { padding: 25px 15px; }
+            #prev-btn { left: 10px; }
+            #next-btn { right: 10px; }
         }
     </style>
 </head>
 
 <body>
 
+    <!-- Main Dashboard UI -->
     <nav class="navbar">
-
         <div class="logo">
             <div class="logo-icon">📖</div>
             <span>Lumina Reads</span>
         </div>
-
         <div class="nav-actions">
             <button class="icon-button">🔍</button>
             <button class="icon-button">⚙️</button>
         </div>
-
     </nav>
 
-
     <main class="container">
-
         <section class="welcome">
             <h1>My Library</h1>
             <p>Your books, your way.</p>
         </section>
 
-
         <section class="upload-box">
-
             <div class="upload-icon">📚</div>
-
             <h2>Add a book to your library</h2>
-
-            <p>
-                Upload an EPUB file and start reading.
-            </p>
-
+            <p>Upload an EPUB file and start reading.</p>
             <label for="fileInput" class="upload-button">
                 + Add EPUB
             </label>
-
-            <input
-                type="file"
-                id="fileInput"
-                accept=".epub,application/epub+zip"
-            >
-
+            <input type="file" id="fileInput" accept=".epub,application/epub+zip">
         </section>
 
-
         <section>
-
             <div class="library-header">
                 <h2>Books</h2>
                 <span class="book-count">0 books</span>
             </div>
-
             <div class="books">
-
                 <div class="empty-library">
-
-                    <div class="empty-library-icon">
-                        📖
-                    </div>
-
+                    <div class="empty-library-icon">📖</div>
                     <p>
                         Your library is empty.
                         <br>
                         Add your first EPUB to get started.
                     </p>
-
                 </div>
-
             </div>
-
         </section>
-
     </main>
 
+    <!-- Reader View Overlay -->
+    <div id="reader-overlay">
+        <div class="reader-header">
+            <span id="reader-title" style="font-weight: 600; font-size: 16px;">Reading Book</span>
+            <button class="close-reader" id="closeReaderBtn">Close Reader</button>
+        </div>
+        <div class="reader-body">
+            <button class="reader-nav" id="prev-btn">&#10094;</button>
+            <div id="viewer"></div>
+            <button class="reader-nav" id="next-btn">&#10095;</button>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const booksContainer = document.querySelector('.books');
+        const bookCountSpan = document.querySelector('.book-count');
+        
+        const readerOverlay = document.getElementById('reader-overlay');
+        const closeReaderBtn = document.getElementById('closeReaderBtn');
+        const readerTitle = document.getElementById('reader-title');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        let libraryBooks = [];
+        let currentBook = null;
+        let currentRendition = null;
+
+        // Handle File Selection and Upload
+        fileInput.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            
+            reader.onload = async function(event) {
+                const buffer = event.target.result;
+                
+                try {
+                    // Initialize ePub parsing
+                    const book = ePub(buffer);
+                    const metadata = await book.loaded.metadata;
+                    let coverUrl = null;
+
+                    try {
+                        coverUrl = await book.coverUrl();
+                    } catch (err) {
+                        console.log("No cover found.");
+                    }
+
+                    const newBook = {
+                        title: metadata.title || file.name.replace('.epub', ''),
+                        author: metadata.creator || 'Unknown Author',
+                        cover: coverUrl || null,
+                        buffer: buffer
+                    };
+
+                    libraryBooks.push(newBook);
+                    renderLibrary();
+                } catch (error) {
+                    alert("Error parsing EPUB file. Please ensure it is a valid EPUB.");
+                    console.error(error);
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+            fileInput.value = ''; // Reset input
+        });
+
+        // Render Library Grid
+        function renderLibrary() {
+            bookCountSpan.textContent = `${libraryBooks.length} book${libraryBooks.length === 1 ? '' : 's'}`;
+
+            if (libraryBooks.length === 0) {
+                booksContainer.innerHTML = `
+                    <div class="empty-library">
+                        <div class="empty-library-icon">📖</div>
+                        <p>
+                            Your library is empty.
+                            <br>
+                            Add your first EPUB to get started.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            booksContainer.innerHTML = '';
+            libraryBooks.forEach((book, index) => {
+                const bookCard = document.createElement('div');
+                bookCard.className = 'book-card';
+                
+                bookCard.innerHTML = `
+                    <div class="book-cover">
+                        ${book.cover ? `<img src="${book.cover}">` : '📖'}
+                    </div>
+                    <div class="book-title" title="${book.title}">${book.title}</div>
+                    <div class="book-author" title="${book.author}">${book.author}</div>
+                `;
+                
+                // Open book reader on click
+                bookCard.addEventListener('click', () => openBook(index));
+                booksContainer.appendChild(bookCard);
+            });
+        }
+
+        // Open Book in Reader View
+        function openBook(index) {
+            const bookData = libraryBooks[index];
+            readerTitle.textContent = bookData.title;
+            readerOverlay.style.display = 'flex';
+
+            // Clear previous viewer content if any
+            document.getElementById('viewer').innerHTML = '';
+
+            // Load book into ePub.js
+            currentBook = ePub(bookData.buffer);
+            currentRendition = currentBook.renderTo("viewer", {
+                width: "100%",
+                height: "100%",
+                spread: "auto"
+            });
+
+            currentRendition.display();
+        }
+
+        // Navigation Controllers
+        prevBtn.addEventListener('click', () => {
+            if (currentRendition) currentRendition.prev();
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentRendition) currentRendition.next();
+        });
+
+        // Close Reader View
+        closeReaderBtn.addEventListener('click', () => {
+            readerOverlay.style.display = 'none';
+            if (currentBook) {
+                currentBook.destroy();
+                currentBook = null;
+                currentRendition = null;
+            }
+        });
+    </script>
 </body>
 </html>
